@@ -19,7 +19,6 @@ import {
   X,
   Pencil,
   Trash2,
-  ChevronDown,
   ShieldCheck,
   LogOut,
   Download,
@@ -49,6 +48,8 @@ import { supabase } from "./store";
 import { saveErrorMessage } from "./errors";
 import { usePageNavigation, pageHref } from "./navigation";
 import { useMobileViewport } from "./useMobileViewport";
+import { createId, readPreference, writePreference } from "./browser";
+import { DatabaseCheck } from "./DatabaseCheck";
 
 const labels: Record<Kind, string> = {
   income: "Entrada",
@@ -77,9 +78,7 @@ export function App() {
     [notice, setNotice] = useState(""),
     [noticeIsError, setNoticeIsError] = useState(false),
     [formError, setFormError] = useState(""),
-    [dark, setDark] = useState(
-      localStorage.getItem("financia-theme") === "dark",
-    ),
+    [dark, setDark] = useState(readPreference("financia-theme") === "dark"),
     [hidden, setHidden] = useState(false),
     [range, setRange] = useState("month"),
     [start, setStart] = useState(today().slice(0, 7) + "-01"),
@@ -112,7 +111,7 @@ export function App() {
   }, [modal]);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("financia-theme", dark ? "dark" : "light");
+    writePreference("financia-theme", dark ? "dark" : "light");
   }, [dark]);
   useEffect(() => {
     if (!supabase) return;
@@ -121,6 +120,7 @@ export function App() {
     });
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error) setNotice(error.message);
+      setUser(data.session?.user.id ?? null);
       if (!data.session) setLoading(false);
     });
     return () => data.subscription.unsubscribe();
@@ -130,32 +130,36 @@ export function App() {
     let active = true;
     loaded.current = false;
     setLoading(true);
-    supabase
-      .from("finance_states")
-      .select("data,version")
-      .maybeSingle()
+    Promise.resolve(
+      supabase.from("finance_states").select("data,version").maybeSingle(),
+    )
       .then(({ data, error }) => {
         if (!active) return;
-        if (error)
-          setNotice("Não foi possível carregar seus dados: " + error.message);
+        if (error) showError(error);
         else {
           setState(data?.data ?? empty());
           revision.current = data?.version ?? 0;
           loaded.current = true;
         }
         setLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          showError(error);
+          setLoading(false);
+        }
       });
     return () => {
       active = false;
     };
   }, [user]);
   useEffect(() => {
-    if (!notice) return;
+    if (!notice || (supabase && !loaded.current)) return;
     const id = setTimeout(() => setNotice(""), 6500);
     return () => clearTimeout(id);
   }, [notice]);
   async function persist(next: State) {
-    if (saving.current) return;
+    if (saving.current) return false;
     saving.current = true;
     setBusy(true);
     setFormError("");
@@ -171,14 +175,20 @@ export function App() {
           expected_version: revision.current,
         });
         if (error) throw error;
+        if (!Number.isInteger(data) || data <= revision.current)
+          throw Error(
+            "O servidor não confirmou a versão da carteira. Atualize a página antes de salvar novamente.",
+          );
         revision.current = data;
       } else localStorage.setItem("financia-demo", JSON.stringify(next));
       setState(next);
       setModal(null);
       setNoticeIsError(false);
       setNotice("Tudo certo! Alterações salvas.");
+      return true;
     } catch (e) {
       showError(e);
+      return false;
     } finally {
       saving.current = false;
       setBusy(false);
@@ -258,7 +268,7 @@ export function App() {
           throw Error("O valor não pode deixar o investimento negativo.");
       }
       const e: Entry = {
-        id: edit?.id ?? crypto.randomUUID(),
+        id: edit?.id ?? createId(),
         kind,
         description: val(f, "description"),
         amount,
@@ -289,7 +299,7 @@ export function App() {
       if (!validDate(val(f, "date")) || val(f, "date") > today())
         throw Error("Use uma data de referência válida até hoje.");
       const i: Investment = {
-        id: crypto.randomUUID(),
+        id: createId(),
         name: val(f, "name"),
         institution: val(f, "institution"),
         type: val(f, "type"),
@@ -303,15 +313,17 @@ export function App() {
     }
   }
   const nav = [
-    { name: "Dashboard", icon: LayoutDashboard },
-    { name: "Movimentações", icon: ArrowLeftRight },
-    { name: "Investimentos", icon: TrendingUp },
-    { name: "Configurações", icon: Settings },
+    { name: "Dashboard", short: "Início", icon: LayoutDashboard },
+    { name: "Movimentações", short: "Movimentos", icon: ArrowLeftRight },
+    { name: "Investimentos", short: "Investir", icon: TrendingUp },
+    { name: "Configurações", short: "Ajustes", icon: Settings },
   ] as const;
   if (supabase && user && !loading && !loaded.current)
     return (
       <div className="loading">
-        <p>Não foi possível carregar seus dados com segurança.</p>
+        <p role="alert">
+          {notice || "Não foi possível carregar seus dados com segurança."}
+        </p>
         <Button onClick={() => location.reload()}>Tentar novamente</Button>
       </div>
     );
@@ -338,7 +350,7 @@ export function App() {
         </a>
         <span className="nav-caption">SEU DIA A DIA</span>
         <nav aria-label="Menu principal">
-          {nav.map(({ name, icon: Icon }) => (
+          {nav.map(({ name, short, icon: Icon }) => (
             <a
               key={name}
               href={pageHref(name)}
@@ -346,21 +358,12 @@ export function App() {
               title={name}
               aria-current={page === name ? "page" : undefined}
               className={page === name ? "active" : ""}
-              onClick={(event) => {
-                if (
-                  event.button !== 0 ||
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.shiftKey ||
-                  event.altKey
-                )
-                  return;
-                event.preventDefault();
-                setPage(name);
-              }}
             >
               <Icon size={20} />
-              <span>{name}</span>
+              <span className="nav-full-label">{name}</span>
+              <span className="nav-mobile-label" aria-hidden="true">
+                {short}
+              </span>
               {page === name && <span className="nav-dot" />}
             </a>
           ))}
@@ -1056,6 +1059,7 @@ export function App() {
           )}
           {page === "Configurações" && (
             <div className="settings-grid">
+              <DatabaseCheck />
               <section className="panel settings-panel">
                 <h2>Conta corrente</h2>
                 <p>
@@ -1073,7 +1077,7 @@ export function App() {
                         ),
                       });
                     } catch (e) {
-                      setNotice((e as Error).message);
+                      showError(e);
                     }
                   }}
                 >
@@ -1109,23 +1113,24 @@ export function App() {
                   você.
                 </p>
                 <form
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    const f = new FormData(e.currentTarget),
+                    const form = e.currentTarget;
+                    const f = new FormData(form),
                       k = String(f.get("kind")) as "income" | "expense",
                       name = String(f.get("name")).trim();
                     if (!name || state.categories[k].includes(name))
-                      return setNotice(
-                        "Escolha um nome novo para a categoria.",
+                      return showError(
+                        Error("Escolha um nome novo para a categoria."),
                       );
-                    persist({
+                    const saved = await persist({
                       ...state,
                       categories: {
                         ...state.categories,
                         [k]: [...state.categories[k], name],
                       },
                     });
-                    e.currentTarget.reset();
+                    if (saved) form.reset();
                   }}
                 >
                   <label>
@@ -1262,7 +1267,11 @@ export function App() {
                   {deleting?.description} · {deleting && fmt(deleting.amount)}
                 </p>
                 <div className="form-actions">
-                  <Button variant="outline" onClick={() => setModal(null)}>
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => setModal(null)}
+                  >
                     Cancelar
                   </Button>
                   <Button
@@ -1351,6 +1360,7 @@ export function App() {
                   <Button
                     variant="outline"
                     type="button"
+                    disabled={busy}
                     onClick={() => setModal(null)}
                   >
                     Cancelar
@@ -1372,6 +1382,7 @@ export function App() {
                       <button
                         type="button"
                         className={formKind === k ? k + " selected" : ""}
+                        disabled={busy}
                         onClick={() => setFormKind(k)}
                         key={k}
                       >
@@ -1470,6 +1481,7 @@ export function App() {
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={busy}
                     onClick={() => setModal(null)}
                   >
                     Cancelar

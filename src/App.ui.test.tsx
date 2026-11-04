@@ -8,6 +8,8 @@ const api = vi.hoisted(() => ({
   state: null as unknown as State,
   version: 1,
   rpc: vi.fn(),
+  load: vi.fn(),
+  emitAuthEvent: true,
 }));
 vi.mock("./store", () => ({
   supabase: {
@@ -15,9 +17,10 @@ vi.mock("./store", () => ({
       onAuthStateChange: (
         callback: (event: string, session: unknown) => void,
       ) => {
-        queueMicrotask(() =>
-          callback("INITIAL_SESSION", { user: { id: "test-user" } }),
-        );
+        if (api.emitAuthEvent)
+          queueMicrotask(() =>
+            callback("INITIAL_SESSION", { user: { id: "test-user" } }),
+          );
         return { data: { subscription: { unsubscribe() {} } } };
       },
       getSession: async () => ({
@@ -27,10 +30,7 @@ vi.mock("./store", () => ({
     },
     from: () => ({
       select: () => ({
-        maybeSingle: async () => ({
-          data: { data: api.state, version: api.version },
-          error: null,
-        }),
+        maybeSingle: () => api.load(),
       }),
     }),
     rpc: (...args: unknown[]) => api.rpc(...args),
@@ -52,6 +52,12 @@ beforeEach(() => {
   api.state = empty();
   api.state.opening = 500000;
   api.version = 1;
+  api.emitAuthEvent = true;
+  api.load.mockReset();
+  api.load.mockResolvedValue({
+    data: { data: api.state, version: api.version },
+    error: null,
+  });
   api.rpc.mockReset();
   api.rpc.mockImplementation(
     async (
@@ -71,6 +77,46 @@ beforeEach(() => {
     },
   );
 });
+it("carrega a carteira mesmo se o evento inicial de autenticação não chegar", async () => {
+  api.emitAuthEvent = false;
+  await start(390);
+  expect(
+    screen.getByRole("navigation", { name: "Menu principal" }),
+  ).toBeTruthy();
+});
+it("mostra erro de conexão no carregamento em vez de manter um carregamento infinito", async () => {
+  api.load.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  render(<App />);
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("Não foi possível conectar");
+  expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeTruthy();
+});
+it("funciona com preferências bloqueadas e preserva categoria após falha de salvamento", async () => {
+  vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    throw new DOMException("Blocked", "SecurityError");
+  });
+  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new DOMException("Blocked", "QuotaExceededError");
+  });
+  const user = await start(390);
+  await user.click(screen.getByRole("button", { name: "Alternar tema" }));
+  expect(document.documentElement.classList.contains("dark")).toBe(true);
+  await navigate(user, "Configurações");
+  const name = screen.getByLabelText("Nome");
+  await user.type(name, "Categoria de teste");
+  api.rpc.mockResolvedValueOnce({
+    data: null,
+    error: { message: "Failed to fetch" },
+  });
+  await user.click(screen.getByRole("button", { name: "Criar categoria" }));
+  await screen.findByRole("alert");
+  expect((name as HTMLInputElement).value).toBe("Categoria de teste");
+  await user.click(screen.getByRole("button", { name: "Criar categoria" }));
+  await waitFor(() =>
+    expect(api.state.categories.expense).toContain("Categoria de teste"),
+  );
+  expect((name as HTMLInputElement).value).toBe("");
+});
 async function start(width: number) {
   Object.defineProperty(window, "innerWidth", {
     value: width,
@@ -88,6 +134,13 @@ async function navigate(
     within(
       screen.getByRole("navigation", { name: "Menu principal" }),
     ).getByRole("link", { name }),
+  );
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole("navigation", { name: "Menu principal" }))
+        .getByRole("link", { name })
+        .getAttribute("aria-current"),
+    ).toBe("page"),
   );
 }
 async function money(
@@ -330,6 +383,33 @@ it("evita gravação duplicada enquanto a primeira requisição está pendente",
   await user.dblClick(save);
   expect(api.rpc).toHaveBeenCalledTimes(1);
   expect((save as HTMLButtonElement).disabled).toBe(true);
+  expect(
+    (within(d).getByRole("button", { name: "Cancelar" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
   await act(async () => resolve({ error: null, data: 2 }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+it("verifica o validador sem gravar dados e orienta o reparo quando necessário", async () => {
+  const user = await start(390);
+  await navigate(user, "Configurações");
+  const before = structuredClone(api.state);
+  api.rpc.mockResolvedValueOnce({ data: false, error: null });
+  await user.click(
+    screen.getByRole("button", { name: "Verificar salvamento" }),
+  );
+  await screen.findByText(/O banco precisa da correção/);
+  expect(
+    screen.getByRole("link", { name: "Abrir script de reparo" }),
+  ).toBeTruthy();
+  expect(api.state).toEqual(before);
+  expect(api.rpc.mock.calls[0][0]).toBe("valid_finance_state");
+  api.rpc.mockResolvedValueOnce({ data: true, error: null });
+  await user.click(
+    screen.getByRole("button", { name: "Verificar salvamento" }),
+  );
+  await screen.findByText(
+    "O banco está aceitando o cadastro de investimentos.",
+  );
+  expect(api.state).toEqual(before);
 });

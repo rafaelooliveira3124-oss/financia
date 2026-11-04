@@ -2,10 +2,11 @@ import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 afterEach(() => {
   cleanup();
-  localStorage.clear();
-  sessionStorage.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+  localStorage.clear();
+  sessionStorage.clear();
 });
 window.scrollTo = () => {};
 class ResizeObserverMock {

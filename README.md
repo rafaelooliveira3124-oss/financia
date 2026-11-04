@@ -1,35 +1,37 @@
 # Financia
 
-Aplicação React + TypeScript, Tailwind CSS, componente Button no padrão shadcn/ui com CVA, Dialog acessível Radix, Lucide e Recharts. A versão de produção exige autenticação, autorização exclusiva do titular e MFA. Sem configuração, o painel permanece bloqueado. Consulte SECURITY.md para ativar.
+Gestão financeira pessoal e compartilhada com React, TypeScript, Tailwind CSS, Radix/shadcn, Recharts e Supabase. A carteira é privada: exige um login autorizado e autenticação em duas etapas. O código e a página de entrada podem ser públicos no GitHub Pages.
 
-## Executar
+## Executar e testar
 
-Node.js 22 ou superior. `npm install`, `npm run dev`. Validação: `npm test` e `npm run build`. A saída está em `dist/`.
+Use Node.js 22.16 ou superior. Execute `npm ci`, `npm run dev`, `npm test` e `npm run build`. A saída de produção fica em `dist/`. Sem as variáveis do Supabase, a produção mostra uma tela de configuração bloqueada. Demonstração só pode ser habilitada no desenvolvimento com `VITE_ENABLE_DEMO=true`.
 
-## Ativar Supabase
+## Banco e acesso
 
-1. Siga o procedimento completo em `SECURITY.md`: execute as duas migrações, autorize o titular e desative novos cadastros.
-2. Copie `.env.example` para `.env` e preencha URL e chave pública (`anon` ou publishable). Nunca use service_role ou chave secreta.
-3. Em Authentication → URL Configuration, cadastre a URL final do aplicativo como Site URL e Redirect URL. Configure o envio de e-mail conforme seu ambiente.
-4. Execute o build novamente e publique `dist`. Com essas variáveis a demonstração é desativada: o aplicativo exige autenticação, inicia contas vazias e persiste no PostgreSQL.
-5. Antes do uso real, valide em seu projeto cadastro, confirmação de e-mail, login, recuperação, logout e isolamento com duas contas. Confirme que uma conta não consegue consultar nem alterar o user_id da outra via API. Esta entrega não dispõe de um projeto Supabase provisionado para testar esses fluxos remotamente.
+Para um projeto Supabase novo, siga `SECURITY.md` e execute `supabase/setup.sql` uma vez. Autorize o titular no SQL administrativo e desative cadastros públicos. Nunca execute a instalação inicial em um banco que já contém sua carteira.
 
-Referências oficiais: [Auth](https://supabase.com/docs/guides/auth), [recuperação de senha](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail), [build Vite](https://vite.dev/guide/build).
+Para dois logins usando a mesma carteira, siga `COMPARTILHAR.md`. Cada pessoa mantém senha e autenticador próprios; ambas podem consultar e alterar os mesmos registros. Usuários não autorizados não têm acesso. Autorizações são mantidas pelo administrador no banco, não pelo frontend.
 
-## Regras e dados
+Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com URL e chave pública publishable/anon. Nunca use service_role, sb_secret_ ou senha de banco no frontend. No GitHub, as variáveis ficam em Settings → Secrets and variables → Actions → Variables. Cada push na main executa os testes, gera o site e publica pelo Pages. Veja `PUBLICAR-GITHUB.md`.
 
-Valores são inteiros em centavos. O saldo é derivado do saldo inicial + entradas − despesas − aportes + resgates + ajustes. O investimento é a posição inicial + aportes − resgates + diferenças de avaliação. Transferências não afetam os indicadores de receita/despesa. Rendimentos não realizados não alteram a conta. Capital líquido aplicado acompanha aportes e resgates; um resgate com lucro pode levar esse capital a valor negativo, preservando o ganho acumulado. Cadastro de investimento é uma posição preexistente, sem débito na conta: novos investimentos devem começar com zero e receber um aporte.
+## Regras financeiras
 
-Movimentos aceitam datas até hoje. Saldos são atuais e independem dos filtros. Últimos três meses inclui o mês atual. Ajustes e rendimentos são diferenças assinadas. Histórico permite editar e excluir todos os lançamentos. Exclusões que deixam investimento negativo são bloqueadas. Há uma única conta corrente nesta versão.
+Valores são inteiros em centavos. Saldo = saldo inicial + entradas − despesas − aportes + resgates + ajustes. Investimentos = posição inicial + aportes − resgates + avaliações. Transferências não entram como receitas ou despesas. Rendimentos não realizados não alteram a conta.
 
-O estado de cada usuário ocupa uma linha JSONB validada pelo banco e isolada por RLS. Cada salvamento usa uma função SQL transacional com versão esperada: gravações de uma aba desatualizada são recusadas, evitando sobrescrita silenciosa. Recarregue a página quando houver conflito. Exportação JSON disponível nas configurações.
+Cadastrar um investimento representa uma posição já existente. Para usar dinheiro da conta, cadastre uma posição zero e registre um aporte. Atualizar o valor pede o novo saldo atual e calcula a diferença de avaliação. O dashboard tem seis indicadores e um único gráfico de rosca. As movimentações podem ser pesquisadas, filtradas, ordenadas, editadas e excluídas com confirmação.
 
-## Uso no celular
+O estado da carteira fica em uma linha JSONB protegida por RLS, autorização e MFA. Gravações usam versão esperada para impedir sobrescrita silenciosa entre acessos. Use Atualizar carteira para carregar alterações feitas por outra sessão. Não há sincronização em tempo real. Exportação JSON disponível em Configurações; guarde o arquivo em local privado.
 
-A mesma URL funciona no navegador do celular. A interface tem abas de navegação no topo com área segura para iPhone, visíveis durante a rolagem, histórico em cartões com ações de toque, filtros reorganizados e formulários em painel inferior. Campos usam fonte de 16px para evitar zoom automático durante a digitação no iOS. Em telas estreitas os campos ficam em uma coluna. Não há aplicativo nativo ou funcionamento offline nesta versão.
+## Safari e celular
 
-A demonstração só pode ser habilitada em desenvolvimento com VITE_ENABLE_DEMO=true. Nela, os registros são locais e separados por navegador. Com Supabase configurado, os dados da conta ficam disponíveis nos dois dispositivos; recarregue para carregar alterações feitas no outro dispositivo. A versão mobile foi verificada por compilação; a inspeção visual e o teste em aparelho físico ainda precisam ser feitos.
+O menu fica na lateral em todos os tamanhos: completo no desktop e compacto no celular. O conteúdo, os cartões e os formulários se ajustam ao espaço restante. A lateral pode ser rolada em paisagem; modais se ajustam ao teclado. Links nativos permitem toque e teclado sem interceptar a navegação do navegador.
 
-## Testes
+O alvo é Safari 16.4 ou superior, conforme o requisito do Tailwind CSS 4. Os testes de componentes usam DOM simulado; a inspeção visual em aparelho físico não foi executada neste ambiente. Não há aplicativo nativo ou funcionamento offline.
 
-Testes automatizados cobrem precisão monetária, filtros, edição, exclusão, aportes, resgates e rendimentos. O modo demo persiste apenas neste navegador. Login, envio de e-mail e RLS exigem projeto Supabase configurado e teste de integração antes do uso com dados reais.
+Tokens usam sessionStorage por aba e memória se o navegador bloquear esse armazenamento. Preferências de aparência não interrompem a interface se o armazenamento estiver indisponível. Renovar a sessão preserva formulários da mesma conta; perda de autorização bloqueia a tela. A sessão local é encerrada após 15 minutos sem interação.
+
+## Diagnóstico e manutenção
+
+Configurações → Verificar salvamento faz uma verificação sem alterar a carteira. Se o validador de investimentos ainda estiver com o erro original, execute somente `supabase/fix-investment-validation.sql` no SQL Editor administrativo. Não recrie tabelas. Veja `CORRIGIR-SALVAMENTO.md` e o resumo das alterações em `REVISAO.md`.
+
+Os testes cobrem negócios, moeda, banco, compartilhamento, segurança, formulários, navegação, MFA, sessão e armazenamento bloqueado. Eles não consultam saldos reais. Login, e-mails e acesso dos dois usuários devem ser confirmados no projeto de produção.

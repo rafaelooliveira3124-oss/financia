@@ -48,7 +48,10 @@ export const empty = (): State => ({
   opening: 0,
   entries: [],
   investments: [],
-  categories: structuredClone(categories),
+  categories: {
+    income: [...categories.income],
+    expense: [...categories.expense],
+  },
 });
 export const today = () => {
   const parts = new Intl.DateTimeFormat("en-CA", {
