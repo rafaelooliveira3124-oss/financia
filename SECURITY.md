@@ -1,5 +1,7 @@
 # Acesso exclusivo do titular
 
+**Extensão opcional:** para dois logins acessando a mesma carteira, siga `COMPARTILHAR.md`. A instalação inicial abaixo continua restrita a um titular; após a migração de compartilhamento, também é aceito o único segundo usuário autorizado pelo administrador, sempre com MFA. Essa extensão foi solicitada para uso compartilhado e concede leitura e alteração dos mesmos dados financeiros.
+
 O código e a tela de entrada são públicos. Saldos e movimentações ficam no PostgreSQL e só são liberados pela API quando o usuário é o titular autorizado, tem e-mail confirmado e sessão com segundo fator (`aal2`). Alterar o JavaScript ou chamar a API diretamente não contorna essas regras. O proprietário administrativo do projeto Supabase também tem acesso ao banco: proteja essa conta com MFA e não compartilhe acesso administrativo.
 
 ## Ativação (projeto Supabase exclusivo para o Financia)
