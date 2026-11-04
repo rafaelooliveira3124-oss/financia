@@ -1,7 +1,4 @@
--- FINANCIA: instalação inicial em projeto novo e exclusivo.
--- Execute UMA VEZ no SQL Editor como administrador.
--- Nenhum dado financeiro é criado. O acesso continua bloqueado até autorizar o titular.
--- Todas as permissões e proteções são aplicadas na mesma transação.
+-- Instala??o inicial somente em projeto novo. N?o execute em carteira existente.
 begin;
 -- Execute no SQL Editor de um projeto Supabase novo.
 create or replace function public.valid_finance_state(s jsonb) returns boolean
@@ -33,7 +30,7 @@ begin
   ids := array_append(ids,e->>'id');
  end loop;
  for i in select * from jsonb_array_elements(s->'investments') loop
-  select (i->>'current')::bigint + coalesce(sum(case e->>'kind' when 'withdrawal' then -(e->>'amount')::bigint when 'contribution' then (e->>'amount')::bigint when 'valuation' then (e->>'amount')::bigint else 0 end),0) into current_value from jsonb_array_elements(s->'entries') e where e->>'investmentId'=i->>'id';
+  select (i->>'current')::bigint + coalesce(sum(case ledger.item->>'kind' when 'withdrawal' then -(ledger.item->>'amount')::bigint when 'contribution' then (ledger.item->>'amount')::bigint when 'valuation' then (ledger.item->>'amount')::bigint else 0 end),0) into current_value from jsonb_array_elements(s->'entries') as ledger(item) where ledger.item->>'investmentId'=i->>'id';
   if current_value<0 then return false; end if;
  end loop;
  if jsonb_typeof(s->'categories')<>'object' or not((s->'categories') ?& array['income','expense']) then return false; end if;
@@ -122,4 +119,4 @@ alter function public.save_finance_state(jsonb,integer) security invoker;
 
 
 commit;
-select 'Estrutura instalada. Falta autorizar o titular e configurar a autenticação.' as status;
+select 'Estrutura instalada. Falta autorizar o titular e configurar a autentica??o.' as status;
