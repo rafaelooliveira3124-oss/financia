@@ -5,6 +5,7 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 window.scrollTo = () => {};
 class ResizeObserverMock {

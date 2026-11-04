@@ -87,7 +87,7 @@ async function navigate(
   await user.click(
     within(
       screen.getByRole("navigation", { name: "Menu principal" }),
-    ).getByRole("button", { name }),
+    ).getByRole("link", { name }),
   );
 }
 async function money(
@@ -160,7 +160,7 @@ describe.each([
     await screen.findByRole("heading", { name: "Meus investimentos" });
     await navigate(user, "Movimentações");
     await user.click(
-      within(screen.getByRole("navigation")).getByRole("button", {
+      within(screen.getByRole("navigation")).getByRole("link", {
         name: "Dashboard",
       }),
     );
@@ -209,6 +209,64 @@ describe.each([
     expect(totals(api.state).expense).toBe(0);
     expect(totals(api.state).income).toBe(0);
   });
+});
+it("abre as telas por toque nas abas e mantém links diretos acessíveis por teclado", async () => {
+  const user = await start(390);
+  const nav = screen.getByRole("navigation", { name: "Menu principal" });
+  const movements = within(nav).getByRole("link", { name: "Movimentações" });
+  expect(movements.getAttribute("href")).toBe("#movimentacoes");
+  await user.pointer([
+    { keys: "[TouchA>]", target: movements },
+    { keys: "[/TouchA]" },
+  ]);
+  expect(
+    screen.getByRole("heading", { name: "Cada movimento conta" }),
+  ).toBeTruthy();
+  expect(movements.getAttribute("aria-current")).toBe("page");
+  const investments = within(nav).getByRole("link", { name: "Investimentos" });
+  await user.pointer([
+    { keys: "[TouchA>]", target: investments },
+    { keys: "[/TouchA]" },
+  ]);
+  expect(
+    screen.getByRole("heading", { name: "Meus investimentos" }),
+  ).toBeTruthy();
+  movements.focus();
+  await user.keyboard("{Enter}");
+  expect(
+    screen.getByRole("heading", { name: "Cada movimento conta" }),
+  ).toBeTruthy();
+});
+it("mantém a navegação quando o navegador móvel recusa pushState", async () => {
+  const user = await start(390);
+  vi.spyOn(window.history, "pushState").mockImplementation(() => {
+    throw new DOMException("Unavailable", "SecurityError");
+  });
+  await navigate(user, "Investimentos");
+  expect(
+    screen.getByRole("heading", { name: "Meus investimentos" }),
+  ).toBeTruthy();
+  expect(window.location.hash).toBe("#investimentos");
+});
+it("ajusta a altura disponível quando o teclado reduz o visualViewport", async () => {
+  const viewport = Object.assign(new EventTarget(), {
+    height: 800,
+    offsetTop: 0,
+  });
+  vi.stubGlobal("visualViewport", viewport);
+  vi.stubGlobal("innerHeight", 800);
+  await start(390);
+  expect(
+    document.documentElement.style.getPropertyValue("--visual-height"),
+  ).toBe("800px");
+  viewport.height = 420;
+  await act(async () => viewport.dispatchEvent(new Event("resize")));
+  expect(
+    document.documentElement.style.getPropertyValue("--visual-height"),
+  ).toBe("420px");
+  expect(
+    document.documentElement.style.getPropertyValue("--keyboard-inset"),
+  ).toBe("380px");
 });
 it("mostra erro estruturado do banco no formulário e mantém os campos para tentar novamente", async () => {
   const user = await start(390);

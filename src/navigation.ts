@@ -6,6 +6,9 @@ const routes = {
   Configurações: "configuracoes",
 } as const;
 type Page = keyof typeof routes;
+export function pageHref(page: Page) {
+  return "#" + routes[page];
+}
 function currentPage(): Page {
   return (
     (Object.keys(routes) as Page[]).find(
@@ -28,8 +31,12 @@ export function usePageNavigation(): [Page, (page: Page) => void] {
     page,
     (next) => {
       if (next === page) return;
-      window.history.pushState(null, "", "#" + routes[next]);
       setPage(next);
+      try {
+        window.history.pushState(null, "", pageHref(next));
+      } catch {
+        window.location.hash = routes[next];
+      }
     },
   ];
 }

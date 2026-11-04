@@ -6,6 +6,7 @@ import "./style.css";
 import "./security.css";
 import "./mobile.css";
 import "./forms.css";
+import "./navigation.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AccessGate>

@@ -47,7 +47,8 @@ import {
 } from "./finance";
 import { supabase } from "./store";
 import { saveErrorMessage } from "./errors";
-import { usePageNavigation } from "./navigation";
+import { usePageNavigation, pageHref } from "./navigation";
+import { useMobileViewport } from "./useMobileViewport";
 
 const labels: Record<Kind, string> = {
   income: "Entrada",
@@ -58,6 +59,7 @@ const labels: Record<Kind, string> = {
   valuation: "Rendimento",
 };
 export function App() {
+  useMobileViewport();
   const [page, setPage] = usePageNavigation();
   const [state, setState] = useState<State>(() => {
       try {
@@ -337,17 +339,28 @@ export function App() {
         <span className="nav-caption">SEU DIA A DIA</span>
         <nav aria-label="Menu principal">
           {nav.map(({ name, icon: Icon }) => (
-            <button
+            <a
               key={name}
-              type="button"
+              href={pageHref(name)}
               aria-current={page === name ? "page" : undefined}
               className={page === name ? "active" : ""}
-              onClick={() => setPage(name)}
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return;
+                event.preventDefault();
+                setPage(name);
+              }}
             >
               <Icon size={20} />
               <span>{name}</span>
               {page === name && <span className="nav-dot" />}
-            </button>
+            </a>
           ))}
         </nav>
         <div className="sidebar-bottom">

@@ -26,7 +26,7 @@ O estado de cada usuário ocupa uma linha JSONB validada pelo banco e isolada po
 
 ## Uso no celular
 
-A mesma URL funciona no navegador do celular. A interface tem menu inferior com área segura para iPhone, histórico em cartões com ações de toque, filtros reorganizados e formulários em painel inferior. Campos usam fonte de 16px para evitar zoom automático durante a digitação no iOS. Em telas estreitas os campos ficam em uma coluna. Não há aplicativo nativo ou funcionamento offline nesta versão.
+A mesma URL funciona no navegador do celular. A interface tem abas de navegação no topo com área segura para iPhone, visíveis durante a rolagem, histórico em cartões com ações de toque, filtros reorganizados e formulários em painel inferior. Campos usam fonte de 16px para evitar zoom automático durante a digitação no iOS. Em telas estreitas os campos ficam em uma coluna. Não há aplicativo nativo ou funcionamento offline nesta versão.
 
 A demonstração só pode ser habilitada em desenvolvimento com VITE_ENABLE_DEMO=true. Nela, os registros são locais e separados por navegador. Com Supabase configurado, os dados da conta ficam disponíveis nos dois dispositivos; recarregue para carregar alterações feitas no outro dispositivo. A versão mobile foi verificada por compilação; a inspeção visual e o teste em aparelho físico ainda precisam ser feitos.
 
