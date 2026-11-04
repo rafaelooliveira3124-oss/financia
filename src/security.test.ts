@@ -2,7 +2,7 @@ import{test}from'node:test';import assert from'node:assert/strict';import{readFi
 test('banco exige titular confirmado + MFA e recusa chamadas diretas não autorizadas',async()=>{
  const db=new PGlite();try{
  await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,email_confirmed_at timestamptz);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;grant usage on schema auth to anon,authenticated;grant execute on function auth.uid(),auth.jwt() to anon,authenticated;`);
- for(const name of ['001_finance.sql','002_owner_only_mfa.sql'])await db.exec(await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8'));
  const owner='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002',state=empty();state.opening=123456;
  await db.query('insert into auth.users values($1,now()),($2,now())',[owner,other]);
  await db.query('insert into private.financia_owner(user_id) values($1)',[owner]);

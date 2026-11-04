@@ -9,13 +9,22 @@ create table private.financia_owner (
 alter table private.financia_owner enable row level security;
 revoke all on private.financia_owner from public, anon, authenticated;
 
-create function public.is_finance_owner() returns boolean
+create function private.is_finance_owner() returns boolean
 language sql stable security definer set search_path = '' as $$
  select exists (
   select 1 from private.financia_owner o
   join auth.users u on u.id=o.user_id
   where o.user_id=(select auth.uid()) and u.email_confirmed_at is not null
  );
+$$;
+revoke all on function private.is_finance_owner() from public, anon;
+grant usage on schema private to authenticated;
+grant execute on function private.is_finance_owner() to authenticated;
+
+-- O endpoint público não tem privilégios administrativos.
+create function public.is_finance_owner() returns boolean
+language sql stable security invoker set search_path = '' as $$
+ select private.is_finance_owner();
 $$;
 revoke all on function public.is_finance_owner() from public, anon;
 grant execute on function public.is_finance_owner() to authenticated;

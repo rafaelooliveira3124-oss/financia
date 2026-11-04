@@ -4,7 +4,7 @@ O código e a tela de entrada são públicos. Saldos e movimentações ficam no 
 
 ## Ativação (projeto Supabase exclusivo para o Financia)
 
-1. Execute `supabase/migrations/001_finance.sql` e depois `002_owner_only_mfa.sql` no SQL Editor. Execute cada migração uma vez. Após a segunda, nenhuma conta acessa os dados até o titular ser autorizado.
+1. Em um projeto novo, execute `supabase/setup.sql` no SQL Editor. Esse arquivo reúne as duas migrações em uma transação. Execute uma única vez; não rode as migrações separadamente depois. Nenhuma conta acessa os dados até o titular ser autorizado.
 2. Em Authentication → Users, crie sua própria conta com e-mail confirmado pelo fluxo do Supabase. Escolha sua senha no painel ou no link de convite. Não envie senhas no chat, em SQL, em arquivos ou em commits.
 3. Copie o User UID da sua conta para o lugar indicado em `supabase/authorize-owner.sql` e execute esse SQL no painel administrativo. A tabela de autorização permite exatamente um titular e não pode ser alterada pela API pública.
 4. Em Authentication → Sign In / Providers, desative **Allow new users to sign up** e o login anônimo; mantenha somente o provedor de e-mail necessário. Desative outros provedores. Use senha única e forte. Ative MFA também nas contas administrativas do Supabase e GitHub.
