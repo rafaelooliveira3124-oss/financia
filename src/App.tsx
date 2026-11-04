@@ -342,6 +342,8 @@ export function App() {
             <a
               key={name}
               href={pageHref(name)}
+              aria-label={name}
+              title={name}
               aria-current={page === name ? "page" : undefined}
               className={page === name ? "active" : ""}
               onClick={(event) => {
