@@ -1,6 +1,6 @@
 # Financia
 
-Aplicação React + TypeScript, Tailwind CSS, componente Button no padrão shadcn/ui com CVA, Dialog acessível Radix, Lucide e Recharts. Sem configuração, inicia em demonstração identificada com persistência local. Não use o modo demo para informações reais.
+Aplicação React + TypeScript, Tailwind CSS, componente Button no padrão shadcn/ui com CVA, Dialog acessível Radix, Lucide e Recharts. A versão de produção exige autenticação, autorização exclusiva do titular e MFA. Sem configuração, o painel permanece bloqueado. Consulte SECURITY.md para ativar.
 
 ## Executar
 
@@ -8,7 +8,7 @@ Node.js 22 ou superior. `npm install`, `npm run dev`. Validação: `npm test` e 
 
 ## Ativar Supabase
 
-1. Crie um projeto Supabase e execute `supabase/migrations/001_finance.sql` no SQL Editor.
+1. Siga o procedimento completo em `SECURITY.md`: execute as duas migrações, autorize o titular e desative novos cadastros.
 2. Copie `.env.example` para `.env` e preencha URL e chave pública (`anon` ou publishable). Nunca use service_role ou chave secreta.
 3. Em Authentication → URL Configuration, cadastre a URL final do aplicativo como Site URL e Redirect URL. Configure o envio de e-mail conforme seu ambiente.
 4. Execute o build novamente e publique `dist`. Com essas variáveis a demonstração é desativada: o aplicativo exige autenticação, inicia contas vazias e persiste no PostgreSQL.
@@ -28,7 +28,7 @@ O estado de cada usuário ocupa uma linha JSONB validada pelo banco e isolada po
 
 A mesma URL funciona no navegador do celular. A interface tem menu inferior com área segura para iPhone, histórico em cartões com ações de toque, filtros reorganizados e formulários em painel inferior. Campos usam fonte de 16px para evitar zoom automático durante a digitação no iOS. Em telas estreitas os campos ficam em uma coluna. Não há aplicativo nativo ou funcionamento offline nesta versão.
 
-No modo demonstração, os registros são locais: celular e computador mantêm dados separados. Com Supabase configurado, os dados da conta ficam disponíveis nos dois dispositivos; recarregue para carregar alterações feitas no outro dispositivo. A versão mobile foi verificada por compilação; a inspeção visual e o teste em aparelho físico ainda precisam ser feitos.
+A demonstração só pode ser habilitada em desenvolvimento com VITE_ENABLE_DEMO=true. Nela, os registros são locais e separados por navegador. Com Supabase configurado, os dados da conta ficam disponíveis nos dois dispositivos; recarregue para carregar alterações feitas no outro dispositivo. A versão mobile foi verificada por compilação; a inspeção visual e o teste em aparelho físico ainda precisam ser feitos.
 
 ## Testes
 

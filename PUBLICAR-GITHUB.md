@@ -11,7 +11,7 @@ Para o usuário `rafaelooliveira3124-oss` e repositório `financia`, o endereço
 
 ## Dados em vários dispositivos
 
-Sem Supabase, o site continua em demonstração e salva dados apenas no navegador. Para sincronizar seus dados reais, execute a migração conforme o README e configure **Settings → Secrets and variables → Actions → Variables**:
+Sem Supabase, o site de produção fica bloqueado. Para sincronizar seus dados reais, execute as duas migrações e autorize o titular conforme SECURITY.md e configure **Settings → Secrets and variables → Actions → Variables**:
 
 - `VITE_SUPABASE_URL`: URL do seu projeto.
 - `VITE_SUPABASE_ANON_KEY`: chave pública anon/publishable. Nunca use service_role ou chave secreta; toda variável VITE será incluída no JavaScript público.
